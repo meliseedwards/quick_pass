@@ -1,0 +1,12 @@
+# No data, no results - GP2 controlled access
+results_*/
+data/
+*.rds
+*.csv
+*.xlsx
+*.txt
+*.png
+*.pdf
+.Rhistory
+.RData
+.Rproj.user/
