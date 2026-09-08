@@ -13,7 +13,7 @@ library(SummarizedExperiment)
 library(tidyverse)
 library(readxl)
 
-source("~/proteomics/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
 
 dir.create(RESULTS_01_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -32,7 +32,7 @@ fix_mojibake <- function(v) {
 # --- 1. Helper to process one panel --------------------------------------------
 process_panel <- function(npq_file, panel_name) {
   cat("Processing panel:", panel_name, "\n")
-  npq_path <- file.path(DATA_DIR, npq_file)
+  npq_path <- file.path(NPQ_DIR, npq_file)
 
   # Special-target categories for this panel 
   ha_targets   <- HIGH_ABUNDANCE_TARGETS[[panel_name]]
@@ -364,15 +364,7 @@ build_se <- function(wide_df, sample_meta, target_status, target_subset = NULL) 
 
 # --- 3. Process panels -------------------------------------------------------
 
-NPQ_FILES <- list(
-  Inflammation = PPMI_CSF_INFLAM_FILE,
-  CNS_Disease  = PPMI_CSF_CNS_FILE,
-   Neuro220     = switch(COHORT,
-                        ntuh  = NTUH_NEURO220_Plasma_FILE,
-                        umklm = UMKLM_NEURO220_Plasma_FILE,
-                        kul   = KUL_NEURO220_Plasma_FILE,
-                        stop("no Neuro220 file defined for cohort ", COHORT))
-)
+NPQ_FILES <- list(Neuro220 = NPQ_FILE)
 
 se_list <- list()
 for (p in PANELS) {

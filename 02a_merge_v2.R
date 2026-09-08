@@ -15,14 +15,13 @@ library(SummarizedExperiment)
 library(tidyverse)
 library(readxl)
 
-source("~/proteomics/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
 
 dir.create(RESULTS_02_DIR, showWarnings = FALSE, recursive = TRUE)
 
 
 # --- 1. Load master key ------------------------------------------------------
-master_key <- read.delim(file.path(DATA_DIR, MASTER_KEY_FILE),
-                       stringsAsFactors = FALSE)
+master_key <- read.csv(file.path(DATA_DIR, MASTER_KEY_FILE), stringsAsFactors = FALSE)
 
 # Filter to study only
 study_key <- master_key %>%
@@ -35,9 +34,9 @@ stopifnot(nrow(study_key) > 0)
 study_key_clean <- study_key %>%
   select(clinical_id, GP2ID, GP2sampleID, study,
          diagnosis, GP2_PHENO, GP2_phenotype, study_arm, study_type,
-         sex, race, age, age_of_onset, age_at_diagnosis,
+         biological_sex_for_qc, age, age_of_onset, age_at_diagnosis,
          age_at_death, age_at_last_follow_up, GP2_phenotype_for_qc,
-         region, family_history_pd, nba_label, nba, wgs_label,
+         family_history_pd, nba_label, nba, wgs_label,
          race_for_qc, biological_sex_for_qc, region_for_qc)%>%
   mutate(join_key = .data[[GP2_JOIN_KEY]])
 
@@ -131,8 +130,8 @@ merge_metadata <- function(se_path, panel_name) {
   merged_meta <- merged_meta %>%
     mutate(
       sex_clean = case_when(
-        trimws(sex) %in% c("F", "Female") ~ "Female",
-        trimws(sex) %in% c("M", "Male")   ~ "Male",
+        trimws(biological_sex_for_qc) %in% c("F", "Female", "1") ~ "Female",
+        trimws(biological_sex_for_qc) %in% c("M", "Male", "2")   ~ "Male",
         TRUE ~ NA_character_),
       # PD vs Control from standardized GP2 fields (prodromal/other dropped)
       phenotype_clean = case_when(
@@ -253,15 +252,7 @@ saveRDS(se, out_path)
 
 
 # --- 3. Merge metadata for each panel ----------------------------------------
-SE_IN <- list(
-  Inflammation = SE_PPMI_CSF_INFLAM,
-  CNS_Disease  = SE_PPMI_CSF_CNS,
-   Neuro220     = switch(COHORT,
-                        ntuh  = SE_NTUH_NEURO220,
-                        umklm = SE_UMKLM_NEURO220,
-                        kul   = SE_KUL_NEURO220,
-                        stop("no Neuro220 SE defined for cohort ", COHORT))
-)
+SE_IN <- list(Neuro220 = SE_FILTERED)
 
 summaries <- list()
 for (p in PANELS) summaries[[p]] <- merge_metadata(SE_IN[[p]], p)

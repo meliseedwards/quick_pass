@@ -1,7 +1,7 @@
 # =============================================================================
 # Script 04 v2: Quality Control Tables + Figures
 # Date: August 2026
-# Description: Post-DA quality control for both panels. 
+# Description: Post-DA quality control for Neuro220 panel. 
 # =============================================================================
 
 
@@ -13,7 +13,7 @@ library(tidyverse)
 library(lme4)
 library(readxl)
 
-source("~/proteomics/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
 
 dir.create(RESULTS_04_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -21,7 +21,7 @@ dir.create(RESULTS_04_DIR, showWarnings = FALSE, recursive = TRUE)
 
 # --- QC thresholds, from the NULISAseqR user guide Table 2.1 -----------------
 
-# move to config later
+# move to config
 ICC_MAX        <- 10    # % of var from plate. >10% = batch effect
 INTRA_CV_MAX   <- 10    # % median intra-plate CV
 INTER_CV_MAX   <- 15    # % median inter-plate CV
@@ -34,7 +34,7 @@ PNG_DPI <- 300
 CANDIDATE_COVARIATES <- c("phenotype_clean", "PlateID", "age", "sex_clean",
                           "pct_above_lod", "sample_qc_flag", "PDTRTMNT",
                           "age_at_diagnosis", "family_history_pd", "region",
-                          "race", "study_arm")
+                          "study_arm")
 
 # function to save png
 save_png <- function(plot, name, panel, w = 10, h = 7) {
@@ -81,9 +81,9 @@ prepare_cohort <- function(se) {
 
 
 # --- 2. ICC + F-test + Tukey, per target -------------------------------------
-# The user guide defines a batch-effect target as ALL THREE of:
+# The NulisaSeqR user guide defines a batch-effect target as ALL three of these:
 #   run ICC > 10%, F-test unadjusted p < 0.01, Tukey-adjusted p < 0.01 for >=1 run
-# Note: ICC is computed on NPQ (log2)
+# Note: ICC is computed on NPQ (log2). Unclear in user guide whether to unlog. 
 icc_one_protein <- function(npq_values, plate) {
   d <- data.frame(npq = npq_values, plate = factor(plate))
   
@@ -161,14 +161,13 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
 
   # --- 5a. ICC ----------------------------------------------------------------
   cat("Computing ICC and Tukey tests...\n")
-  tick <- 0
   icc_raw <- map_dfr(rownames(expr), function(tg) {
-    tick <<- tick + 1; if (tick %% 25 == 0) invisible(gc(FALSE))
     res <- tryCatch(icc_one_protein(expr[tg, ], plate),
                     error = function(e) data.frame(ICC = NA_real_,
                                                    plate_F_pvalue = NA_real_,
                                                    tukey_min_p = NA_real_))
-    res$Target <- tg; res
+    res$Target <- tg
+    res
   })
 
   # --- 5b. distribution shape + detectability from rowData -----------------
@@ -182,13 +181,14 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
   # --- 5c. CV ---------------------------------------------------------------
 
   # Read the workbook once. Both the CV block and the per-plate block use it.
-    npq_long <- read_excel(file.path(DATA_DIR, npq_file), sheet = 1, na = "NA")
-  # same aliases as Script 01 - NTUH uses SampleMatrixType / targetLOD_NPQ
-  aliases <- c(Biofluid = "SampleMatrixType", LOD = "targetLOD_NPQ")
-  for (std in names(aliases)) {
-    if (!std %in% names(npq_long) && aliases[[std]] %in% names(npq_long))
-      names(npq_long)[names(npq_long) == aliases[[std]]] <- std
-  }
+  npq_long <- read_excel(file.path(NPQ_DIR, npq_file), sheet = 1, na = "NA")
+
+  # same aliases as Script 01
+  if ("SampleMatrixType" %in% names(npq_long))
+    npq_long <- dplyr::rename(npq_long, Biofluid = SampleMatrixType)
+  if ("targetLOD_NPQ" %in% names(npq_long))
+    npq_long <- dplyr::rename(npq_long, LOD = targetLOD_NPQ)
+
   npq_long <- npq_long %>% mutate(NPQ = as.numeric(NPQ), LOD = as.numeric(LOD))
 
 
@@ -235,7 +235,7 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
       "| of those high_confidence:", sum(qc_target$high_confidence, na.rm = TRUE), "\n")
 
   if (any(qc_target$sig & !qc_target$high_confidence, na.rm = TRUE)) {
-    cat("Significant but NOT high_confidence - check these before presenting:\n")
+    cat("Significant but NOT high_confidence - check these before presenting/publishing:\n")
     print(qc_target %>%
             filter(sig, !high_confidence) %>%
                         select(Target, adj.P.Val, ICC, intra_cv, intra_cv_max, worst_plate,
@@ -279,8 +279,6 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
   pc_meta <- left_join(pc_df, meta, by = "SampleName")
 
 
-
-
   # --- 5h. qc_sample.csv ---------------------------------------------------
   qc_sample <- meta %>%
     select(SampleName, DONOR_ID, PlateID, SampleQC, sample_qc_flag,
@@ -289,7 +287,6 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
     left_join(pc_df %>% select(SampleName, PC1:PC5), by = "SampleName")
   write.csv(qc_sample, file.path(RESULTS_04_DIR,
             paste0("qc_sample_", panel_name, ".csv")), row.names = FALSE)
-
 
 
   # --- 5i. qc_plate.csv ----------------------------------------------------
@@ -333,28 +330,7 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
             paste0("qc_plate_", panel_name, ".csv")), row.names = FALSE)
 
 
-
-
-  # --- 5j. qc_pc_variance.csv (v1 Script 03's PC ANOVA, extended) ----------
-  pc_var <- data.frame(PC = paste0("PC", 1:n_pc),
-                       variance_pct = round(var_exp[1:n_pc], 2))
-  for (v in c("phenotype_clean", "PlateID", "age", "sex_clean")) {
-    ps <- sapply(1:n_pc, function(i) {
-      d <- data.frame(pc = pc_meta[[paste0("PC", i)]], x = pc_meta[[v]])
-      d <- d[complete.cases(d), ]
-      if (length(unique(d$x)) < 2) return(NA_real_)
-      summary(aov(pc ~ x, data = d))[[1]][["Pr(>F)"]][1]
-    })
-    pc_var[[paste0(v, "_p")]] <- signif(ps, 3)
-  }
-  write.csv(pc_var, file.path(RESULTS_04_DIR,
-            paste0("qc_pc_variance_", panel_name, ".csv")), row.names = FALSE)
-  print(head(pc_var, 5))
-
-
-
-
-  # --- 5k. covariate screen -------------------------------------------------
+  # --- 5j. covariate screen -------------------------------------------------
   # R-squared of each candidate covariate against each PC. A covariate that
   # explains a lot of PC variance and is NOT in DA_COVARIATES is a candidate
   # for the model.
@@ -388,7 +364,7 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
 
 
 
-# --- 5l. Zero report --------------------------------------------------------
+# --- 5k. Zero report --------------------------------------------------------
 
 # Write out table of targets with exact zeros, and how many are in PD vs Control
 ex  <- assay(se, "npq")
@@ -469,7 +445,7 @@ print(head(zero_report %>% filter(pct_zero > 0) %>%
   # 02 / 03. Q-Q plots -------------------------------------------------------
 
   # Observed NPQ against normal theoretical quantiles, coloured by plate, with
-  # a reference line through the quartiles. Matches the collaborator's figure.
+  # a reference line through the quartiles.
   make_qq <- function(targets, title, subtitle, fname) {
     d <- long %>%
       filter(Target %in% targets, !is.na(NPQ)) %>%
@@ -503,48 +479,21 @@ print(head(zero_report %>% filter(pct_zero > 0) %>%
 
 
 
-  # 04. PCA, 4 panels --------------------------------------------------------
+  # 04. PCA, 3 panels --------------------------------------------------------
 
-pca_panel <- function(colour_by, lab, show_legend = TRUE) {
-    # clip to the 1st-99th percentile so a couple of extreme samples don't
-    # compress everything else. Report n_off outside the range in subtitle.
-    xl <- quantile(pc_meta$PC1, c(0.01, 0.99), na.rm = TRUE)
-    yl <- quantile(pc_meta$PC2, c(0.01, 0.99), na.rm = TRUE)
-    n_off <- sum(pc_meta$PC1 < xl[1] | pc_meta$PC1 > xl[2] |
-                 pc_meta$PC2 < yl[1] | pc_meta$PC2 > yl[2], na.rm = TRUE)
-    p <- ggplot(pc_meta, aes(PC1, PC2, colour = .data[[colour_by]])) +
-      geom_point(size = 1.6, alpha = 0.7) +
-      coord_cartesian(xlim = xl, ylim = yl) +
-      labs(x = paste0("PC1 (", round(var_exp[1], 1), "%)"),
-           y = paste0("PC2 (", round(var_exp[2], 1), "%)"),
-           colour = lab, title = lab,
-           caption = paste(n_off, "sample(s) outside axis range"))
-    if (!show_legend) p <- p + theme(legend.position = "none")
-    p
-  }
+   pc_long <- pc_meta %>%
+    select(PC1, PC2, Plate = PlateID, Phenotype = phenotype_clean,
+           Sex = sex_clean) %>%
+    pivot_longer(c(Plate, Phenotype, Sex), names_to = "variable", values_to = "value")
 
-  p_plate <- pca_panel("PlateID", "Plate", FALSE)
-  p_pheno <- pca_panel("phenotype_clean", "Phenotype") +
-    scale_colour_manual(values = c("Control" = "tomato", "PD" = "steelblue"))
-  p_age   <- pca_panel("age", "Age") + scale_colour_viridis_c()
-  p_sex   <- pca_panel("sex_clean", "Sex")
-  # simple 2x2 without extra packages
-  png(file.path(RESULTS_04_DIR, paste0("04_pca_4panel_", panel_name, ".png")),
-      width = 11 * PNG_DPI, height = 9 * PNG_DPI, res = PNG_DPI)
-  gridExtra_ok <- requireNamespace("gridExtra", quietly = TRUE)
-  if (gridExtra_ok) {
-    gridExtra::grid.arrange(p_plate, p_pheno, p_age, p_sex, ncol = 2,
-                            top = paste0(panel_name, ": PCA"))
-  } else {
-    print(p_plate)   # fallback: gridExtra not installed
-  }
-  dev.off()
-  if (!gridExtra_ok) {
-    save_png(p_pheno, "04b_pca_phenotype", panel_name, 7, 6)
-    save_png(p_age,   "04c_pca_age",       panel_name, 7, 6)
-    save_png(p_sex,   "04d_pca_sex",       panel_name, 7, 6)
-    cat("  (gridExtra not installed - PCA saved as separate panels)\n")
-  }
+  p04 <- ggplot(pc_long, aes(PC1, PC2, colour = value)) +
+    geom_point(size = 1.6, alpha = 0.7) +
+    facet_wrap(~ variable) +
+    labs(x = paste0("PC1 (", round(var_exp[1], 1), "%)"),
+         y = paste0("PC2 (", round(var_exp[2], 1), "%)"),
+         title = paste0(panel_name, ": PCA"), colour = NULL)
+
+  save_png(p04, "04_pca_panels", panel_name, 12, 5)
 
 
 
@@ -702,24 +651,13 @@ pca_panel <- function(colour_by, lab, show_legend = TRUE) {
 # --- 6. Run all panels -------------------------------------------------------
 
 
-SE_MERGED <- list(
-  Inflammation = SE_PPMI_CSF_INFLAM_MERGED,
-  CNS_Disease  = SE_PPMI_CSF_CNS_MERGED,
-  Neuro220     = SE_MERGED_ACTIVE)
-
-NPQ_FILES <- list(
-  Inflammation = PPMI_CSF_INFLAM_FILE,
-  CNS_Disease  = PPMI_CSF_CNS_FILE,
-  Neuro220     = switch(COHORT,
-                        ntuh  = NTUH_NEURO220_Plasma_FILE,
-                        umklm = UMKLM_NEURO220_Plasma_FILE,
-                        kul   = KUL_NEURO220_Plasma_FILE,
-                        stop("no Neuro220 file defined for cohort ", COHORT)))
+SE_PATHS  <- list(Neuro220 = SE_MERGED)
+NPQ_FILES <- list(Neuro220 = NPQ_FILE)
 
 qc <- list()
 for (p in PANELS) {
   qc[[p]] <- run_qc_panel(
-    se_path    = SE_MERGED[[p]],
+    se_path  = SE_PATHS[[p]],
     npq_file   = NPQ_FILES[[p]],
     panel_name = p,
     da_file    = file.path(RESULTS_03_DIR, paste0("DA_results_all_", p, ".csv")))

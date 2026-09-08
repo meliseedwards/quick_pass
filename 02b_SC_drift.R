@@ -1,5 +1,5 @@
 # =============================================================================
-# Script 04b: Sample control (SC) drift across plates, per target
+# Script 02b: Sample control (SC) drift across plates, per target
 # Date: August 2026
 # Description: SC wells are pooled plasma that aren't used in normalization,
 #              so plate-to-plate differences in them are technical, not
@@ -14,20 +14,14 @@ library(SummarizedExperiment)
 library(tidyverse)
 library(readxl)
 
-source("~/proteomics/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
 
 dir.create(SC_DRIFT_DIR, showWarnings = FALSE, recursive = TRUE)
-
-npq_file <- switch(COHORT,
-  ntuh  = NTUH_NEURO220_Plasma_FILE,
-  umklm = UMKLM_NEURO220_Plasma_FILE,
-  kul   = KUL_NEURO220_Plasma_FILE,
-  stop("no NPQ file for cohort ", COHORT))
 
 
 # --- 1. Load SC wells --------------------------------------------------------
 
-npq <- read_excel(file.path(DATA_DIR, npq_file), sheet = 1, na = "NA") %>%
+npq <- read_excel(file.path(NPQ_DIR, NPQ_FILE), sheet = 1, na = "NA") %>%
   dplyr::rename(LOD = targetLOD_NPQ)
 
 sc <- npq %>%

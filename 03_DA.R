@@ -13,7 +13,7 @@ library(tidyverse)
 library(limma)
 library(ggrepel)
 
-source("~/proteomics/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
 
 dir.create(RESULTS_03_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -111,9 +111,24 @@ fit_da <- function(se) {
     cat("  SVA estimated", sv$n.sv, "surrogate variable(s)\n")
   }
   stopifnot(nrow(design) == ncol(expr))   # a dropped row here means NA covariates
-  fit <- eBayes(lmFit(expr, design))
-  topTable(fit, coef = "phenotype_cleanPD", number = Inf, adjust.method = "BH") %>%
-    rownames_to_column("Target")
+    
+  fit <- lmFit(expr, design)
+
+  coef_name <- "phenotype_cleanPD"
+
+  se_ord <- fit$sigma * fit$stdev.unscaled[, coef_name]
+  t_ord  <- fit$coefficients[, coef_name] / se_ord
+  p_ord  <- 2 * pt(-abs(t_ord), df = fit$df.residual)
+
+  tibble(Target    = rownames(expr),
+         logFC     = fit$coefficients[, coef_name],
+         SE        = se_ord,
+         t         = t_ord,
+         P.Value   = p_ord,
+         adj.P.Val = p.adjust(p_ord, "BH"),
+         df        = fit$df.residual,
+         n         = ncol(expr)) %>%
+    arrange(P.Value)
 }
 
 
@@ -362,44 +377,15 @@ make_volcano_plot <- function(results, panel_name) {
 
 # --- 7. Run all panels -------------------------------------------------------
 
-SE_MERGED <- list(
-  Inflammation = SE_PPMI_CSF_INFLAM_MERGED,
-  CNS_Disease  = SE_PPMI_CSF_CNS_MERGED,
-  Neuro220     = switch(COHORT,
-                        ntuh  = SE_NTUH_NEURO220_MERGED,
-                        umklm = SE_UMKLM_NEURO220_MERGED,
-                        kul   = SE_KUL_NEURO220_MERGED,
-                        stop("no Neuro220 merged SE defined for cohort ", COHORT))
-)
-
+SE_PATHS <- list(Neuro220 = SE_MERGED)
 results <- list()
 for (p in PANELS) {
-  results[[p]] <- run_differential_abundance(SE_MERGED[[p]], p)
+  results[[p]] <- run_differential_abundance(SE_PATHS[[p]], p)
   make_volcano_plot(results[[p]], p)
 }
 
 
-
-# --- 8. Cross-panel check ----------------------------------------------------
-
-if (length(PANELS) >= 2) {
-  shared <- inner_join(
-    results[[PANELS[1]]] %>% select(Target, logFC_1 = logFC, p_1 = adj.P.Val),
-    results[[PANELS[2]]] %>% select(Target, logFC_2 = logFC, p_2 = adj.P.Val),
-    by = "Target")
-  if (nrow(shared) > 0) {
-    shared <- shared %>% mutate(same_direction = sign(logFC_1) == sign(logFC_2))
-    cat("\nTargets on both panels:", nrow(shared),
-        "| same direction:", sum(shared$same_direction), "\n")
-    print(shared)
-    write.csv(shared, file.path(RESULTS_03_DIR, "cross_panel_shared_targets.csv"),
-              row.names = FALSE)
-  }
-}
-
-
-
-# --- 9. Summary --------------------------------------------------------------
+# --- 8. Summary --------------------------------------------------------------
 build_summary <- function(results, panel_name) {
   data.frame(
     panel           = panel_name,
