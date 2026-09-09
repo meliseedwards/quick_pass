@@ -32,9 +32,8 @@ PNG_DPI <- 300
 
 # covariates screened against the PCs
 CANDIDATE_COVARIATES <- c("phenotype_clean", "PlateID", "age", "sex_clean",
-                          "pct_above_lod", "sample_qc_flag", "PDTRTMNT",
-                          "age_at_diagnosis", "family_history_pd", "region",
-                          "study_arm")
+                          "pct_above_lod", "sample_qc_flag", "study_arm",
+                          "age_at_diagnosis", "family_history_pd", "region_for_qc")
 
 # function to save png
 save_png <- function(plot, name, panel, w = 10, h = 7) {
@@ -49,8 +48,7 @@ save_png <- function(plot, name, panel, w = 10, h = 7) {
 # Kept identical to build_cohort() in Script 03.
 prepare_cohort <- function(se) {
   meta <- as.data.frame(colData(se))
-  keep <- meta$phenotype_clean %in% c("PD", "Control") &
-          meta$ancestry %in% ANCESTRY_KEEP
+  keep <- meta$phenotype_clean %in% c("PD", "Control")
   keep[is.na(keep)] <- FALSE
   se <- se[, keep]
   meta <- as.data.frame(colData(se))
@@ -283,7 +281,7 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
   qc_sample <- meta %>%
     select(SampleName, DONOR_ID, PlateID, SampleQC, sample_qc_flag,
            pct_above_lod, detectability_flag, phenotype_clean,
-           age, sex_clean, ancestry) %>%
+           age, sex_clean) %>%
     left_join(pc_df %>% select(SampleName, PC1:PC5), by = "SampleName")
   write.csv(qc_sample, file.path(RESULTS_04_DIR,
             paste0("qc_sample_", panel_name, ".csv")), row.names = FALSE)
@@ -396,6 +394,14 @@ zero_report <- lapply(rownames(ex), function(t) {
 write.csv(zero_report,
           file.path(RESULTS_04_DIR, paste0("zero_report_", panel_name, ".csv")),
           row.names = FALSE)
+
+# put the zero columns on qc_target too, so one file has every flag
+qc_target <- qc_target %>%
+  left_join(zero_report %>% select(Target, zero_gap, zero_imbalance_flag),
+            by = "Target")
+
+write.csv(qc_target, file.path(RESULTS_04_DIR,
+          paste0("qc_target_", panel_name, ".csv")), row.names = FALSE)
 
 cat("targets with any exact zeros:", sum(zero_report$pct_zero > 0), "of", nrow(zero_report), "\n")
 cat("targets >5% zeros:", sum(zero_report$zero_flag), "\n")
@@ -675,6 +681,7 @@ qc_summary <- bind_rows(lapply(PANELS, function(p) data.frame(
   n_inter_cv_fail   = sum(qc[[p]]$inter_cv >= INTER_CV_MAX, na.rm = TRUE),
   n_cv_unmeasurable = sum(!qc[[p]]$cv_measurable),
   n_low_detect        = sum(qc[[p]]$detectability < DET_THRESH, na.rm = TRUE),
+  n_zero_imbalance  = sum(qc[[p]]$zero_imbalance_flag, na.rm = TRUE),
   n_detect_unmeasurable = sum(!qc[[p]]$detect_measurable))))
 
 write.csv(qc_summary, file.path(RESULTS_04_DIR, "qc_summary.csv"), row.names = FALSE)

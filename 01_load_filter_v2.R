@@ -1,8 +1,8 @@
 # =============================================================================
 # Script 01 (v2): load, filter, & build SummarizedExperiment (SE) objects
 # Date: July 2026
-# Description: Loads NPQ data, filters to baseline study samples if applicable, 
-#              applies target filtering, builds SummarizedExperiment per panel.
+# Description: Loads NPQ data, filters to study samples if applicable, applies
+#              target filtering, builds SummarizedExperiment per panel.
 # =============================================================================
 
 
@@ -120,7 +120,7 @@ process_panel <- function(npq_file, panel_name) {
       npq_samples <- npq_samples[!bad_id, ]
     }
   }
-  cat("After filtering to baseline study samples:",
+  cat("After filtering to study samples:",
       length(unique(npq_samples$SampleName)), "samples\n")
 
   # v2: report the SampleQC split, then only drop if the config says to.

@@ -25,7 +25,6 @@ if (!file.exists(SC_DRIFT_FILE))
 cat("DA settings | covariates:", paste(DA_COVARIATES, collapse = " + "),
     "| plate:", PLATE_CORRECTION,
     "| FDR:", FDR_THRESHOLD,
-    "| ancestry:", ANCESTRY_KEEP,
     "| remove outliers:", REMOVE_OUTLIERS, "\n\n")
 
 # load META6 GWAS genes
@@ -38,8 +37,7 @@ meta6_unique <- unique(meta6_genes$Meta6_Genes)
 
 build_cohort <- function(se) {
   meta <- as.data.frame(colData(se))
-  keep <- meta$phenotype_clean %in% c("PD", "Control") &
-          meta$ancestry %in% ANCESTRY_KEEP
+  keep <- meta$phenotype_clean %in% c("PD", "Control")
   keep[is.na(keep)] <- FALSE
   se <- se[, keep]
   meta <- as.data.frame(colData(se))
@@ -357,7 +355,7 @@ make_volcano_plot <- function(results, panel_name) {
                                   "Down in PD" = "steelblue",
                                   "Not significant" = "gray80")) +
     geom_hline(yintercept = -log10(0.05), linetype = "dotted", color = "gray40") +
-    labs(title = paste0(panel_name, ": PD vs Control (", COHORT, ", ", ANCESTRY_KEEP, ")"),
+    labs(title = paste0(panel_name, ": PD vs Control (", COHORT, ")"),
          subtitle = paste0("Orange = META6 | grey ring = <", DET_THRESH * 100,
                            "% detectable | dotted = p=0.05",
                            if (!is.na(threshold_y_fdr))

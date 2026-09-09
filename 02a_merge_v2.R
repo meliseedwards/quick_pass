@@ -37,7 +37,7 @@ study_key_clean <- study_key %>%
          biological_sex_for_qc, age, age_of_onset, age_at_diagnosis,
          age_at_death, age_at_last_follow_up, GP2_phenotype_for_qc,
          family_history_pd, nba_label, nba, wgs_label,
-         race_for_qc, biological_sex_for_qc, region_for_qc)%>%
+         race_for_qc, region_for_qc) %>%
   mutate(join_key = .data[[GP2_JOIN_KEY]])
 
 # Check for duplicate IDs
@@ -50,35 +50,6 @@ if (nrow(duplicated_ids) > 0) {
   print(head(duplicated_ids))
   stop("Duplicate id(s) in the master key - the join would add rows.")
 }
-
-
-# --- 1b. Load PD treatment status (baseline from PPMI data) ----------------------
-
-# PDTRTMNT (binary: 0=untreated, 1=treated) at baseline visit, joined by ID (PPMI).
-if (USE_CURATED) {
-  curated_sheets <- excel_sheets(file.path(DATA_DIR, CURATED_FILE))
-
-if (!CURATED_SHEET %in% curated_sheets) {
-  stop("Sheet '", CURATED_SHEET, "' is not in ", CURATED_FILE,
-       ". Sheets present: ", paste(curated_sheets, collapse = ", "),
-       "\nUpdate CURATED_SHEET in the config - it changes with every data cut.")
-}
-
-treatment_raw <- read_excel(file.path(DATA_DIR, CURATED_FILE),
-                            sheet = CURATED_SHEET, na = c("", "NA")) %>%
-  filter(EVENT_ID == "BL") %>%
-  mutate(PATNO = as.character(PATNO)) %>%
-  select(PATNO, PDTRTMNT)
-
-treatment_bl <- treatment_raw %>% distinct(PATNO, .keep_all = TRUE)
-
-cat("Baseline treatment records loaded:", nrow(treatment_bl),
-    "| treated:", sum(treatment_bl$PDTRTMNT == 1, na.rm = TRUE), "\n")
-} else {
-  treatment_bl <- NULL
-  cat("USE_CURATED = FALSE - no curated clinical file for this cohort\n")
-}
-
 
 
 # --- 2. Helper function: merge metadata into SE -----------------------------
@@ -97,10 +68,26 @@ merge_metadata <- function(se_path, panel_name) {
    merged_meta <- current_meta %>%
     left_join(study_key_clean, by = c("DONOR_ID" = "join_key"))
 
-  if (!is.null(treatment_bl)) {
+  # Manifest fallback: some donors are not yet in R12, but the manifest carries
+  # the same phenotype/age/sex fields. Master key wins where both exist.
+  # Validated in p136: 226/226 agreement on phenotype, age, and sex.
+  if (!is.null(MANIFEST_FILES)) {
+    man <- bind_rows(lapply(MANIFEST_FILES, function(f)
+      read.csv(file.path(MANIFEST_DIR, f), stringsAsFactors = FALSE))) %>%
+      transmute(SampleName = trimws(.data[[MANIFEST_SAMPLE_COL]]),
+                man_phenotype = GP2_phenotype,
+                man_age = age,
+                man_sex = biological_sex_for_qc) %>%
+      distinct(SampleName, .keep_all = TRUE)
+
     merged_meta <- merged_meta %>%
-      left_join(treatment_bl, by = c("DONOR_ID" = "PATNO")) %>%
-      mutate(PDTRTMNT = factor(PDTRTMNT))
+      left_join(man, by = "SampleName") %>%
+      mutate(metadata_source = ifelse(is.na(GP2ID), "manifest", "master_key"),
+             GP2_phenotype = coalesce(GP2_phenotype, man_phenotype),
+             age           = coalesce(age, man_age),
+             biological_sex_for_qc = coalesce(biological_sex_for_qc, man_sex))
+
+    cat("Metadata source:\n"); print(table(merged_meta$metadata_source))
   }
 
   # v2: neither join may change the number of rows
@@ -130,20 +117,14 @@ merge_metadata <- function(se_path, panel_name) {
   merged_meta <- merged_meta %>%
     mutate(
       sex_clean = case_when(
-        trimws(biological_sex_for_qc) %in% c("F", "Female", "1") ~ "Female",
-        trimws(biological_sex_for_qc) %in% c("M", "Male", "2")   ~ "Male",
-        TRUE ~ NA_character_),
+       trimws(biological_sex_for_qc) %in% c("F", "Female", "1") ~ "Female",
+       trimws(biological_sex_for_qc) %in% c("M", "Male", "2")   ~ "Male",
+       TRUE ~ NA_character_),
       # PD vs Control from standardized GP2 fields (prodromal/other dropped)
       phenotype_clean = case_when(
-        trimws(GP2_phenotype) == "PD" &
-          trimws(diagnosis) %in% c("PD", "Idiopathic PD")
-        ~ "PD",
-        trimws(GP2_phenotype) == "Control" &
-          trimws(diagnosis) %in% c("HC", "Control", "Healthy control",
-                                   "No PD Nor Other Neurological Disorder")
-        ~ "Control",
-        TRUE ~ NA_character_
-      ),
+       trimws(GP2_phenotype) == "PD"      ~ "PD",
+       trimws(GP2_phenotype) == "Control" ~ "Control",
+       TRUE ~ NA_character_),
       # Unified ancestry: prefer NBA label; fall back to WGS label; else NA.
       ancestry = case_when(
       !is.na(nba_label) & nba_label != "" ~ nba_label,
@@ -156,9 +137,8 @@ merge_metadata <- function(se_path, panel_name) {
       TRUE                                ~ NA_character_
     )
   )
-  # Report exclusions (matched to GP2 but no clean phenotype)
-  # v2: show WHICH label combinations caused it. A "Parkinson's Disease" vs
-  # "Idiopathic PD" mismatch in a new cohort otherwise costs samples silently.
+
+  # Matched or manifest-sourced, but GP2_phenotype was not PD or Control
   excluded <- merged_meta %>%
     filter(is.na(phenotype_clean) & !is.na(GP2ID))
   cat("Excluded (matched but no clean PD/Control phenotype):", nrow(excluded), "\n")
@@ -167,35 +147,14 @@ merge_metadata <- function(se_path, panel_name) {
     print(excluded %>% dplyr::count(GP2_phenotype, diagnosis, sort = TRUE))
   }
 
-  # A GP2_phenotype of PD or Control that did not map is a string mismatch,
-  # not a real exclusion. Check.
-  unmapped <- merged_meta %>%
-    filter(is.na(phenotype_clean), trimws(GP2_phenotype) %in% c("PD", "Control"))
-  if (nrow(unmapped) > 0) {
-    cat("\nWARNING:", nrow(unmapped),
-        "samples have GP2_phenotype PD or Control but did not map.\n",
-        " This is almost always an unrecognised diagnosis string:\n")
-    print(unmapped %>% dplyr::count(GP2_phenotype, diagnosis, sort = TRUE))
-  }
 
   cat("\nHarmonized phenotype distribution:\n")
   print(table(merged_meta$phenotype_clean, useNA = "always"))
+
   cat("\nAncestry (unified: NBA then WGS) distribution:\n")
   print(table(merged_meta$ancestry, useNA = "always"))
   cat("\nAncestry source (NBA vs WGS):\n")
   print(table(merged_meta$ancestry_source, useNA = "always"))
-
-  # check the configured ancestry actually exists here
-  n_ancestry <- sum(merged_meta$ancestry %in% ANCESTRY_KEEP, na.rm = TRUE)
-  cat("Samples matching ANCESTRY_KEEP (", ANCESTRY_KEEP, "): ", n_ancestry, "\n", sep = "")
-  if (n_ancestry == 0)
-    stop("ANCESTRY_KEEP is '", ANCESTRY_KEEP, "' but no samples have it.")
-
-  # treatment x phenotype, not the marginal table
-  if ("PDTRTMNT" %in% colnames(merged_meta)) {
-    cat("\nTreatment (PDTRTMNT) x phenotype - DIAGNOSTIC ONLY, not a covariate:\n")
-    print(table(merged_meta$PDTRTMNT, merged_meta$phenotype_clean, useNA = "always"))
-  }
 
   # Critical: merged_meta MUST be in same order as colnames(se)
   stopifnot(identical(as.character(merged_meta$SampleName), colnames(se)))
@@ -216,17 +175,20 @@ saveRDS(se, out_path)
   cat("Saved:", basename(out_path), "\n")
 
 
-# write the unmatched donors so they can be tracked (possibly R13)
+# Donors not in R12. For manifest cohorts their phenotype/age/sex came from
+  # the manifest instead, so they are still analysed - this list is for
+  # tracking which donors still need a genotyping release (ancestry, variants).
   unmatched_ids <- merged_meta %>%
     filter(is.na(GP2ID)) %>%
     select(SampleName, DONOR_ID, PlateID, SampleQC, pct_above_lod)
   if (nrow(unmatched_ids) > 0) {
     write.csv(unmatched_ids,
               file.path(RESULTS_02_DIR,
-                        paste0("unmatched_", COHORT, "_", panel_name, ".csv")),
+                        paste0("not_in_r12_", COHORT, "_", panel_name, ".csv")),
               row.names = FALSE)
-    cat("Wrote", nrow(unmatched_ids), "unmatched donor IDs to unmatched_",
-        COHORT, "_", panel_name, ".csv\n", sep = "")
+    cat("Wrote ", nrow(unmatched_ids),
+        " donors not in R12 to not_in_r12_", COHORT, "_", panel_name, ".csv",
+        " (metadata from manifest where available)\n", sep = "")
   }
 
 
@@ -239,12 +201,12 @@ saveRDS(se, out_path)
     n_PD       = sum(merged_meta$phenotype_clean == "PD", na.rm = TRUE),
     n_Control  = sum(merged_meta$phenotype_clean == "Control", na.rm = TRUE),
     n_unmatched = sum(is.na(merged_meta$GP2ID)),
-    n_ancestry_keep = n_ancestry,
-    # v2: how many samples are actually usable in Script 03 - PD/Control, the
-    # right ancestry, and complete covariates.
+    n_from_manifest = if ("metadata_source" %in% names(merged_meta))
+                        sum(merged_meta$metadata_source == "manifest") else 0L,
+    n_ancestry_known = sum(!is.na(merged_meta$ancestry)),
+    # how many samples are actually usable (with complete covariates).
     n_da_ready = sum(
       merged_meta$phenotype_clean %in% c("PD", "Control") &
-      merged_meta$ancestry %in% ANCESTRY_KEEP &
       stats::complete.cases(merged_meta[, DA_COVARIATES, drop = FALSE]),
       na.rm = TRUE)
   ))

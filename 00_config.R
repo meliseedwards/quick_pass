@@ -16,7 +16,7 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "ntuh" 
+COHORT <- "p136" 
 PLATE_CORRECTION <- "none" 
 
 # label whether model was adj for plate or not 
@@ -26,12 +26,12 @@ PLATE_SUFFIX <- if (PLATE_CORRECTION == "none") "_plate_none" else "_plate_adj"
 FILTER_MODE <- "none"
 
 
-if (COHORT == "ntuh") {
+if (COHORT == "p121") {         # NTUH 
 
-  PANELS             <- c("Neuro220")
+  PANELS             <- c("Neuro220")         
   MATRIX_TYPE        <- "PLASMA"
   SAMPLE_DET_MIN     <- 0.90            
-  ANCESTRY_KEEP      <- "EAS"
+  ANCESTRY_KEEP      <- NULL
   VISIT_KEEP         <- NULL            # no visit column
   ID_METHOD          <- "strip_suffix"  # SampleName minus "_s2" = GP2ID
   ID_COLUMN          <- NULL
@@ -46,11 +46,11 @@ if (COHORT == "ntuh") {
   NPQ_DIR  <- file.path(BUCKET_DIR, "P121 GP2")
   NPQ_FILE <- "P121_BSHRI_NULISAseq_Neuro220_NPQ_06092026.xlsx"
 
-} else if (COHORT == "p118") {
+} else if (COHORT == "p118") {          # UMKLM AND KUL COMBINED
   PANELS             <- c("Neuro220")
   MATRIX_TYPE        <- "PLASMA"
   SAMPLE_DET_MIN     <- 0.90
-  ANCESTRY_KEEP      <- "EAS"
+  ANCESTRY_KEEP      <- NULL
   VISIT_KEEP         <- NULL
   ID_METHOD          <- "manifest"
   ID_COLUMN          <- NULL
@@ -66,20 +66,164 @@ if (COHORT == "ntuh") {
   MANIFEST_SAMPLE_COL <- "sample_id"
   MANIFEST_GP2ID_COL  <- "GP2ID"
 
-} else  stop("Unknown COHORT: ", COHORT)
+} else if (COHORT == "p118a") {         # UMKLM
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- "UMKLM"
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P118 GP2")
+  NPQ_FILE           <- "P118_BSHRI_NULISAseq_Neuro220_NPQ_06082026.xlsx"
+  MANIFEST_FILES     <- "UMKLM_selfQCV2_2026-01-23_m11.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p118b") {         # KUL
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- "KUL"
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P118 GP2")
+  NPQ_FILE           <- "P118_BSHRI_NULISAseq_Neuro220_NPQ_06082026.xlsx"
+  MANIFEST_FILES <- "KUL_selfQCV2_2026-01-23_m4.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p149") {          # CANDAS-SMPD    
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("CANDAS-SMPD")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P149 GP2")
+  NPQ_FILE           <- "P149_BSHRI_NULISAseq_Neuro220Panel_NPQ_08112026.xlsx"
+  MANIFEST_FILES     <- "CANDAS-SMPD_selfQCV2_2026-04-09_m2.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p136") {           # TRAPCAF
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("TRAPCAF")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P136 GP2")
+  NPQ_FILE           <- "P136_NEW_BSHRI_NULISAseq_Neuro220Panel_NPQ_0825262026.xlsx"
+  MANIFEST_FILES     <- c("TRAPCAF_selfQCV2_2026-02-26_m2.csv",
+                          "TRAPCAF_selfQCV2_2026-02-26_m3.csv")
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p148") {           # PROSPECT
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("PROSPECT")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P148 GP2")
+  NPQ_FILE           <- "P148_BSHRI_NULISAseq_Neuro220Panel_NPQ_08112026.xlsx"
+  MANIFEST_FILES     <- "PROSPECT_selfQCV2_2026-03-27_m19.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p143") {           # Nigeria-PD
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("Nigeria-PD")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P143 GP2")
+  NPQ_FILE           <- "P143_BSHRI_NULISAseq_Neuro220Panel_NPQ_08112026.xlsx"
+  MANIFEST_FILES     <- "Nigeria-PD_selfQCV2_2026-03-30_m5.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p111") {           # ELPD
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("ELPD")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P111 GP2")
+  NPQ_FILE           <- "P111_BSHRI_NULISAseq_Neuro220_NPQ_06082026.xlsx"
+  MANIFEST_FILES     <- "ELPD_selfQCV2_2026-01-07_m3.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else {
+  stop("Unknown COHORT: ", COHORT)
+}
 
 # Results directories 
 COHORT_DIR <- switch(COHORT,
-  ntuh     = "results_p121_v2",
-  p118     = "results_p118_v2")
+  p111  = "results_p111_v2",
+  p118  = "results_p118_v2",
+  p118a = "results_p118a_v2",
+  p118b = "results_p118b_v2",
+  p121  = "results_p121_v2",
+  p136  = "results_p136_v2",
+  p143  = "results_p143_v2",
+  p148  = "results_p148_v2",
+  p149  = "results_p149_v2",
+  stop("No COHORT_DIR defined for ", COHORT))
 
 RESULTS_BASE <- file.path(PROJECT_DIR, paste0(COHORT_DIR, "_filter_", FILTER_MODE))
-RESULTS_DIR  <- paste0(RESULTS_BASE, PLATE_SUFFIX)
+RESULTS_DIR  <- paste0(RESULTS_BASE, PLATE_SUFFIX) # used for carrier analyses only
 
 RESULTS_01_DIR <- file.path(RESULTS_BASE, "01_load_filter")
 RESULTS_02_DIR <- file.path(RESULTS_BASE, "02_merge_gp2")
-RESULTS_03_DIR <- file.path(RESULTS_DIR, "03_differential_abundance")
-RESULTS_04_DIR <- file.path(RESULTS_DIR, "04_qc_report")
+RESULTS_03_DIR <- file.path(RESULTS_BASE, paste0("03_differential_abundance", PLATE_SUFFIX))
+RESULTS_04_DIR <- file.path(RESULTS_BASE, paste0("04_qc_report", PLATE_SUFFIX))
 
 # SC drift script doesn't depend on the DA model, so it lives in RESULTS_BASE
 SC_DRIFT_DIR  <- file.path(RESULTS_BASE, "02b_sc_drift")
@@ -201,9 +345,10 @@ VENDOR_HIGH_CV_PLASMA <- list(
 
 # guards
 stopifnot(
-  exists("PANELS"), exists("ANCESTRY_KEEP"), exists("MATRIX_TYPE"),
+  exists("PANELS"), exists("MATRIX_TYPE"),
   exists("SAMPLE_ID_PATTERN"), exists("VISIT_KEEP"), exists("ID_METHOD"),
   exists("NPQ_DIR"), exists("NPQ_FILE"),
+  exists("COHORT_DIR"), !is.null(COHORT_DIR),
   ID_METHOD %in% c("column", "strip_suffix", "manifest"),
   (ID_METHOD == "manifest") == !is.null(MANIFEST_FILES),
   is.null(SAMPLE_ID_PATTERN) || nzchar(SAMPLE_ID_PATTERN),
@@ -214,6 +359,5 @@ stopifnot(
 
 cat("CONFIG | cohort:", COHORT, "| matrix:", MATRIX_TYPE,
     "| panels:", paste(PANELS, collapse = ", "),
-    "| ancestry:", ANCESTRY_KEEP,
     "| plate adj:", PLATE_CORRECTION,
     "| id pattern:", ifelse(is.null(SAMPLE_ID_PATTERN), "none", SAMPLE_ID_PATTERN), "\n")
