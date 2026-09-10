@@ -1,6 +1,6 @@
 # =============================================================================
 # Script 03 (v2): Differential Abundance - PD vs Control
-# Description: limma DA for the cohort and panels set in 00_config.R.
+# Description: limma DA for the cohort and panels set in 00_config_v2.R.
 #              Annotates hits with target QC, vendor flags, and SC drift.
 # =============================================================================
 
