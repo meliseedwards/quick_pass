@@ -10,3 +10,9 @@ data/
 .Rhistory
 .RData
 .Rproj.user/
+
+# carrier and figure scripts - not part of the public pipeline
+05_lrrk2_carrier.R
+07_slide_figures_ntuh.R
+08_lrrk2_carrier_stratified.R
+bridging_sample_check.R
