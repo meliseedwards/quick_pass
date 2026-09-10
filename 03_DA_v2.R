@@ -13,7 +13,7 @@ library(tidyverse)
 library(limma)
 library(ggrepel)
 
-source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config_v2.R")
 
 dir.create(RESULTS_03_DIR, showWarnings = FALSE, recursive = TRUE)
 

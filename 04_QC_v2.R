@@ -13,7 +13,7 @@ library(tidyverse)
 library(lme4)
 library(readxl)
 
-source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config.R")
+source("~/proteomics_nulisa/scripts/nulisa_pipeline_v2/quick_pass/00_config_v2.R")
 
 dir.create(RESULTS_04_DIR, showWarnings = FALSE, recursive = TRUE)
 
