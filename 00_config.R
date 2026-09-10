@@ -16,7 +16,7 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p136" 
+COHORT <- "p143" 
 PLATE_CORRECTION <- "none" 
 
 # label whether model was adj for plate or not 
@@ -177,7 +177,8 @@ if (COHORT == "p121") {         # NTUH
   SAMPLE_ID_PATTERN  <- NULL
   NPQ_DIR            <- file.path(BUCKET_DIR, "P143 GP2")
   NPQ_FILE           <- "P143_BSHRI_NULISAseq_Neuro220Panel_NPQ_08112026.xlsx"
-  MANIFEST_FILES     <- "Nigeria-PD_selfQCV2_2026-03-30_m5.csv"
+  MANIFEST_FILES     <- c("Nigeria-PD_selfQCV2_2026-03-30_m5.csv",
+                          "Nigeria-PD_selfQCV2_2026-01-07_m3.csv")
   MANIFEST_SAMPLE_COL <- "sample_id"
   MANIFEST_GP2ID_COL  <- "GP2ID"
 

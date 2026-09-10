@@ -82,8 +82,9 @@ process_panel <- function(npq_file, panel_name) {
     }
 
     man <- bind_rows(lapply(MANIFEST_FILES, read_one))
+    
     lookup <- man %>%
-      transmute(SampleName = trimws(as.character(.data[[MANIFEST_SAMPLE_COL]])),
+      transmute(SampleName = trimws(gsub("'", "", as.character(.data[[MANIFEST_SAMPLE_COL]]))),
                 DONOR_ID   = trimws(as.character(.data[[MANIFEST_GP2ID_COL]]))) %>%
       filter(SampleName != "", DONOR_ID != "") %>%
       distinct(SampleName, .keep_all = TRUE)

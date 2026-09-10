@@ -74,15 +74,17 @@ merge_metadata <- function(se_path, panel_name) {
   if (!is.null(MANIFEST_FILES)) {
     man <- bind_rows(lapply(MANIFEST_FILES, function(f)
       read.csv(file.path(MANIFEST_DIR, f), stringsAsFactors = FALSE))) %>%
-      transmute(SampleName = trimws(.data[[MANIFEST_SAMPLE_COL]]),
-                man_phenotype = GP2_phenotype,
-                man_age = age,
-                man_sex = biological_sex_for_qc) %>%
+      transmute(SampleName = trimws(gsub("'", "", as.character(.data[[MANIFEST_SAMPLE_COL]]))),
+          man_phenotype = GP2_phenotype,
+          man_age = age,
+          man_sex = biological_sex_for_qc) %>%
       distinct(SampleName, .keep_all = TRUE)
 
     merged_meta <- merged_meta %>%
       left_join(man, by = "SampleName") %>%
-      mutate(metadata_source = ifelse(is.na(GP2ID), "manifest", "master_key"),
+      mutate(across(c(GP2_phenotype, biological_sex_for_qc),
+                    ~ ifelse(trimws(.x) == "", NA_character_, .x)),
+             metadata_source = ifelse(is.na(GP2ID), "manifest", "master_key"),
              GP2_phenotype = coalesce(GP2_phenotype, man_phenotype),
              age           = coalesce(age, man_age),
              biological_sex_for_qc = coalesce(biological_sex_for_qc, man_sex))
