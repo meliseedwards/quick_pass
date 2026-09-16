@@ -42,9 +42,15 @@ build_cohort <- function(se) {
   se <- se[, keep]
   meta <- as.data.frame(colData(se))
 
-  # exclude severe low-detectability samples. Alamar's 70% CSF
-  # floor stays a flag (those samples are kept); this is a much lower bar for
-  # samples with effectively no measurement.
+  # exclude apoe sample swaps 
+  n_before <- ncol(se)
+  se <- se[, !colnames(se) %in% IDENTITY_EXCLUDE]
+  if (ncol(se) < n_before) {
+    cat("Excluded", n_before - ncol(se), "APOE sample-swap failure(s)\n")
+    meta <- as.data.frame(colData(se))
+  }
+
+  # exclude severe low-detectability samples
   if (!is.null(SAMPLE_DETECT_EXCLUDE)) {
     bad <- !is.na(meta$pct_above_lod) & meta$pct_above_lod < SAMPLE_DETECT_EXCLUDE
     if (any(bad)) {
@@ -56,13 +62,11 @@ build_cohort <- function(se) {
     }
   }
 
-  # complete covariates. NOTE: DA_COVARIATES does NOT include PDTRTMNT, so
-  # samples with unknown treatment status are no longer silently dropped.
+  # complete covariates
   cc <- complete.cases(meta[, c("phenotype_clean", DA_COVARIATES), drop = FALSE])
   se <- se[, cc]
 
-  # Targets need enough measured samples to model. limma will fit a row with
-  # almost no data and return a p-value for it.
+  # targets need enough measured samples to model
   n_measured <- rowSums(!is.na(assay(se, "npq")))
   cat("Targets with fewer than", MIN_SAMPLES_PER_TARGET,
       "measured samples:", sum(n_measured < MIN_SAMPLES_PER_TARGET), "\n")
@@ -73,7 +77,7 @@ build_cohort <- function(se) {
   colData(se)$sex_clean <- factor(colData(se)$sex_clean)
   colData(se)$PlateID   <- droplevels(factor(colData(se)$PlateID))
 
-  # Targets the vendor says must not go through routine DA (APOE4 is a binary
+  # targets the vendor says must not go through routine DA (APOE4 is a binary
   # carrier readout). They stay in the SE and in QC, just not in the model.
   if (length(EXCLUDE_FROM_DA) > 0) {
     drop <- rownames(se) %in% EXCLUDE_FROM_DA
@@ -144,6 +148,7 @@ detect_outliers_pca <- function(expr_mat, meta_df, panel_name,
                                 sd_threshold = OUTLIER_SD_THRESHOLD) {
   pca <- prcomp(t(expr_mat), scale. = TRUE, center = TRUE)
   var_explained <- (pca$sdev^2 / sum(pca$sdev^2)) * 100
+  
   # distance from centroid using first 5 PCs
   pc_scores <- pca$x[, 1:5]
   distances <- sqrt(rowSums(pc_scores^2))
@@ -165,6 +170,7 @@ detect_outliers_pca <- function(expr_mat, meta_df, panel_name,
   legend("topright", legend = c("PD", "Control", "Outlier"),
          col = c("steelblue", "tomato", "black"), pch = 16)
   dev.off()
+
   if (length(outlier_samples) > 0) {
     outlier_df <- data.frame(
       SampleName = outlier_samples,
