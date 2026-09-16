@@ -69,15 +69,16 @@ merge_metadata <- function(se_path, panel_name) {
     left_join(study_key_clean, by = c("DONOR_ID" = "join_key"))
 
   # Manifest fallback: some donors are not yet in R12, but the manifest carries
-  # the same phenotype/age/sex fields. Master key wins where both exist.
-  # Validated in p136: 226/226 agreement on phenotype, age, and sex.
+  # the same phenotype/age/sex fields. R12 wins where both exist.
   if (!is.null(MANIFEST_FILES)) {
-    man <- bind_rows(lapply(MANIFEST_FILES, function(f)
-      read.csv(file.path(MANIFEST_DIR, f), stringsAsFactors = FALSE))) %>%
-      transmute(SampleName = trimws(gsub("'", "", as.character(.data[[MANIFEST_SAMPLE_COL]]))),
-          man_phenotype = GP2_phenotype,
-          man_age = age,
-          man_sex = biological_sex_for_qc) %>%
+      man <- bind_rows(lapply(seq_along(MANIFEST_FILES), function(i) {
+      m   <- read.csv(file.path(MANIFEST_DIR, MANIFEST_FILES[i]), stringsAsFactors = FALSE)
+      col <- if (length(MANIFEST_SAMPLE_COL) > 1) MANIFEST_SAMPLE_COL[i] else MANIFEST_SAMPLE_COL
+      m %>% transmute(SampleName    = trimws(gsub("'", "", as.character(.data[[col]]))),
+                      man_phenotype = GP2_phenotype,
+                      man_age       = age,
+                      man_sex       = biological_sex_for_qc)
+    })) %>%
       distinct(SampleName, .keep_all = TRUE)
 
     merged_meta <- merged_meta %>%

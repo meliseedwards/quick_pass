@@ -16,7 +16,7 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p143" 
+COHORT <- "p144_p146"  
 PLATE_CORRECTION <- "none" 
 
 # label whether model was adj for plate or not 
@@ -198,9 +198,67 @@ if (COHORT == "p121") {         # NTUH
   NPQ_DIR            <- file.path(BUCKET_DIR, "P111 GP2")
   NPQ_FILE           <- "P111_BSHRI_NULISAseq_Neuro220_NPQ_06082026.xlsx"
   MANIFEST_FILES     <- "ELPD_selfQCV2_2026-01-07_m3.csv"
+  MANIFEST_SAMPLE_COL <- "GP2sampleID"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p144") {           # LARGEPD (all controls) for within-cohort carrier analyses 
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("LARGEPD")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P144 GP2")
+  NPQ_FILE           <- "P144_BSHRI_NULISAseq_Neuro220Panel_NPQ_0814262026.xlsx"
+  MANIFEST_FILES     <- "LARGEPD_selfQCV2_2026-04-09_m3.csv"
   MANIFEST_SAMPLE_COL <- "sample_id"
   MANIFEST_GP2ID_COL  <- "GP2ID"
 
+} else if (COHORT == "p146") {           # PDGNRTN (all cases) for within-cohort carrier analyses
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("PDGNRTN")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- file.path(BUCKET_DIR, "P146 GP2")
+  NPQ_FILE           <- "P146_BSHRI_NULISAseq_Neuro220Panel_NPQ_08122026.xlsx"
+  MANIFEST_FILES     <- "PDGNRTN_selfQCV2_2026-04-07_m23.csv"
+  MANIFEST_SAMPLE_COL <- "sample_id"
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+
+} else if (COHORT == "p144_p146") {   # LARGEPD controls + PDGNRTN cases for combined DA analysis
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- NULL
+  ID_METHOD          <- "manifest"
+  ID_COLUMN          <- NULL
+  GP2_JOIN_KEY       <- "GP2ID"
+  STUDY_FILTER       <- c("LARGEPD", "PDGNRTN")
+  EXCLUDE_FROM_DA    <- c("APOE4")
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  NPQ_DIR            <- BUCKET_DIR
+  NPQ_FILE           <- c("P144 GP2/P144_BSHRI_NULISAseq_Neuro220Panel_NPQ_0814262026.xlsx",
+                      "P146 GP2/P146_BSHRI_NULISAseq_Neuro220Panel_NPQ_08122026.xlsx")
+  MANIFEST_FILES     <- c("LARGEPD_selfQCV2_2026-04-09_m3.csv", "PDGNRTN_selfQCV2_2026-04-07_m23.csv")
+  MANIFEST_SAMPLE_COL <- c("sample_id", "alternative_id1") 
+  MANIFEST_GP2ID_COL  <- "GP2ID"
+ 
 } else {
   stop("Unknown COHORT: ", COHORT)
 }
@@ -216,6 +274,9 @@ COHORT_DIR <- switch(COHORT,
   p143  = "results_p143_v2",
   p148  = "results_p148_v2",
   p149  = "results_p149_v2",
+  p144  = "results_p144_v2",
+  p146  = "results_p146_v2",
+  p144_p146 = "results_p144_p146_v2",
   stop("No COHORT_DIR defined for ", COHORT))
 
 RESULTS_BASE <- file.path(PROJECT_DIR, paste0(COHORT_DIR, "_filter_", FILTER_MODE))
@@ -287,6 +348,14 @@ REMOVE_OUTLIERS <- FALSE
 # labels mean (0W / 52W) and how to handle donors enrolled under multiple
 # sub-study IDs, these donors are excluded rather than picked between.
 DROP_REPEAT_DONORS <- TRUE
+
+# Samples where the proteomic APOE4 readout disagrees with the donor's APOE
+# genotype, indicating a probable sample swap.
+IDENTITY_EXCLUDE_FILE <- "~/proteomics_nulisa/scripts/identity_flagged_samples.csv"
+IDENTITY_EXCLUDE <- if (file.exists(IDENTITY_EXCLUDE_FILE)) {
+  x <- read.csv(IDENTITY_EXCLUDE_FILE, stringsAsFactors = FALSE)
+  x$SampleName[x$APOE4_SAMPLE_CHECK == "FAIL"]
+} else character(0)
 
 
 # --- v2 DA model ------------------------------------------------------------

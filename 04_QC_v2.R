@@ -53,6 +53,14 @@ prepare_cohort <- function(se) {
   se <- se[, keep]
   meta <- as.data.frame(colData(se))
 
+  # remove apoe sample swaps
+  n_before <- ncol(se)
+  se <- se[, !colnames(se) %in% IDENTITY_EXCLUDE]
+  if (ncol(se) < n_before) {
+    cat("Excluded", n_before - ncol(se), "APOE sample-swap failure(s)\n")
+    meta <- as.data.frame(colData(se))
+  }
+
   # exclude severe low-detectability samples
   if (!is.null(SAMPLE_DETECT_EXCLUDE)) {
     bad <- !is.na(meta$pct_above_lod) & meta$pct_above_lod < SAMPLE_DETECT_EXCLUDE
@@ -178,8 +186,11 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
 
   # --- 5c. CV ---------------------------------------------------------------
 
-  # Read the workbook once. Both the CV block and the per-plate block use it.
-  npq_long <- read_excel(file.path(NPQ_DIR, npq_file), sheet = 1, na = "NA")
+  # Read the workbook once - both the CV block and the per-plate block use it.
+   npq_long <- bind_rows(lapply(file.path(NPQ_DIR, npq_file), function(f) {
+    read_excel(f, sheet = 1, na = "NA") %>%
+      mutate(across(any_of(c("NPQ", "targetLOD_NPQ")), as.numeric))
+  }))
 
   # same aliases as Script 01
   if ("SampleMatrixType" %in% names(npq_long))

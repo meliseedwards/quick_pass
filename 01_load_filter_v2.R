@@ -41,10 +41,13 @@ process_panel <- function(npq_file, panel_name) {
   qc_exclude_targets <- c(ha_targets, rare_targets)
 
   # Load NPQ data
-  npq_long <- read_excel(npq_path, sheet = 1, na = "NA")
+ npq_long <- bind_rows(lapply(npq_path, function(f) {
+  read_excel(f, sheet = 1, na = "NA") %>%
+    mutate(across(any_of(c("NPQ", "targetLOD_NPQ")), as.numeric))
+  }))
   cat("Raw rows in the data:", nrow(npq_long), "\n")
 
-  # Repair double-encoded target names
+  # Repair double-encoded target names (abeta)
   before <- unique(npq_long$Target)
   npq_long$Target <- fix_mojibake(npq_long$Target)
   changed <- setdiff(unique(npq_long$Target), before)
@@ -80,12 +83,13 @@ process_panel <- function(npq_file, panel_name) {
       else
         read.csv(file.path(MANIFEST_DIR, f), stringsAsFactors = FALSE)
     }
-
-    man <- bind_rows(lapply(MANIFEST_FILES, read_one))
     
-    lookup <- man %>%
-      transmute(SampleName = trimws(gsub("'", "", as.character(.data[[MANIFEST_SAMPLE_COL]]))),
-                DONOR_ID   = trimws(as.character(.data[[MANIFEST_GP2ID_COL]]))) %>%
+    lookup <- bind_rows(lapply(seq_along(MANIFEST_FILES), function(i) {
+    m   <- read_one(MANIFEST_FILES[i])
+    col <- if (length(MANIFEST_SAMPLE_COL) > 1) MANIFEST_SAMPLE_COL[i] else MANIFEST_SAMPLE_COL
+    m %>% transmute(SampleName = trimws(gsub("'", "", as.character(.data[[col]]))),
+                      DONOR_ID   = trimws(as.character(.data[[MANIFEST_GP2ID_COL]])))
+    })) %>%
       filter(SampleName != "", DONOR_ID != "") %>%
       distinct(SampleName, .keep_all = TRUE)
 
