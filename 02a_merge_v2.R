@@ -142,12 +142,10 @@ merge_metadata <- function(se_path, panel_name) {
   )
 
   # Matched or manifest-sourced, but GP2_phenotype was not PD or Control
-  excluded <- merged_meta %>%
-    filter(is.na(phenotype_clean) & !is.na(GP2ID))
-  cat("Excluded (matched but no clean PD/Control phenotype):", nrow(excluded), "\n")
-
+  excluded <- merged_meta %>% filter(is.na(phenotype_clean))
+  cat("Excluded (no clean PD/Control phenotype):", nrow(excluded), "\n")
   if (nrow(excluded) > 0) {
-    print(excluded %>% dplyr::count(GP2_phenotype, diagnosis, sort = TRUE))
+    print(excluded %>% dplyr::count(across(any_of(c("metadata_source", "GP2_phenotype", "diagnosis"))), sort = TRUE))
   }
 
 

@@ -280,7 +280,8 @@ run_differential_abundance <- function(se_path, panel_name) {
       vendor_high_cv      = Target %in% VENDOR_HIGH_CV_PLASMA[[panel_name]],
       vendor_low_detect   = Target %in% VENDOR_LOW_DETECT[[panel_name]],
       cross_reactive      = Target %in% names(CROSS_REACTIVE_TARGETS[[panel_name]]),
-      xr_partner_on_panel = Target %in% XR_PARTNER_ON_PANEL[[panel_name]]
+      xr_partner_on_panel = Target %in% XR_PARTNER_ON_PANEL[[panel_name]],
+      hemolysis_sensitive = Target %in% names(VENDOR_HEMOLYSIS_SENSITIVE[[panel_name]])
     )
 
    # annotate with script 02b inter- and intra-plate CV 

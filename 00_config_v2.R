@@ -16,7 +16,7 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p144_p146"  
+COHORT <- "p118a"  
 PLATE_CORRECTION <- "none" 
 
 # label whether model was adj for plate or not 
@@ -410,6 +410,13 @@ VENDOR_HIGH_CV_PLASMA <- list(
   Neuro220 = c("pPRKN-S65", "pRAB29-T71", "pQ-HTT", "pRAB12-S106",
                "BASP1", "CGRP", "SNCB", "CST5", "pLRRK2-S1292",
                "pRAB10-T73", "pQ-ATXN3", "PARK7")
+)
+
+# Hemoglobin interference (Alamar Inflammation 250 validation; same targets assumed
+# to behave the same on Neuro220 - not vendor-confirmed). Value = lowest tested Hb
+# concentration (g/L) at which the assay deviated >30%. Flag, not filter.
+VENDOR_HEMOLYSIS_SENSITIVE <- list(
+  Neuro220 = c("CCL5" = 2, "FLT1" = 2, "IL18" = 2, "S100A12" = 2, "IL16" = 10)
 )
 
 
