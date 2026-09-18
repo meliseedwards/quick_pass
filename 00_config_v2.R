@@ -16,11 +16,11 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p118a"  
-PLATE_CORRECTION <- "none" 
+COHORT <- "p136"  
+PLATE_CORRECTION <- "none" # none, covariate, sva
 
 # label whether model was adj for plate or not 
-PLATE_SUFFIX <- if (PLATE_CORRECTION == "none") "_plate_none" else "_plate_adj"
+PLATE_SUFFIX <- switch(PLATE_CORRECTION, none = "_plate_none", covariate = "_plate_adj", sva = "_plate_sva")
 
 # "default" = the NA/zero thresholds below; "none" = no NA or zero filtering.
 FILTER_MODE <- "none"
@@ -291,6 +291,10 @@ RESULTS_04_DIR <- file.path(RESULTS_BASE, paste0("04_qc_report", PLATE_SUFFIX))
 SC_DRIFT_DIR  <- file.path(RESULTS_BASE, "02b_sc_drift")
 SC_DRIFT_FILE <- file.path(SC_DRIFT_DIR, paste0("sc_drift_", COHORT, ".csv"))
 
+
+# --- Meta-analysis cohorts ---------------------------------------------------
+META_COHORTS <- c("ELPD", "UMKLM", "KUL", "NTUH", "TRAPCAF", "CANDAS-SMPD")
+META_INPUT   <- "plate_adj" # plate_adj = per-cohort decision; plate_none = no plate adj any cohort
 
 
 # --- NULISA data files ----------------------------------------------------------
