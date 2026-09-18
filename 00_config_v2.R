@@ -16,14 +16,15 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p136"  
+COHORT <- "p121"  
 PLATE_CORRECTION <- "none" # none, covariate, sva
 
 # label whether model was adj for plate or not 
 PLATE_SUFFIX <- switch(PLATE_CORRECTION, none = "_plate_none", covariate = "_plate_adj", sva = "_plate_sva")
 
-# "default" = the NA/zero thresholds below; "none" = no NA or zero filtering.
-FILTER_MODE <- "none"
+# --- Meta-analysis cohorts ---------------------------------------------------
+META_COHORTS <- c("ELPD", "UMKLM", "KUL", "NTUH", "TRAPCAF", "CANDAS-SMPD")
+META_INPUT   <- "plate_none" # plate_adj = per-cohort decision; plate_none = no plate adj any cohort
 
 
 if (COHORT == "p121") {         # NTUH 
@@ -292,11 +293,6 @@ SC_DRIFT_DIR  <- file.path(RESULTS_BASE, "02b_sc_drift")
 SC_DRIFT_FILE <- file.path(SC_DRIFT_DIR, paste0("sc_drift_", COHORT, ".csv"))
 
 
-# --- Meta-analysis cohorts ---------------------------------------------------
-META_COHORTS <- c("ELPD", "UMKLM", "KUL", "NTUH", "TRAPCAF", "CANDAS-SMPD")
-META_INPUT   <- "plate_adj" # plate_adj = per-cohort decision; plate_none = no plate adj any cohort
-
-
 # --- NULISA data files ----------------------------------------------------------
 # release 12
 MASTER_KEY_FILE <- "INTERNAL_USE_ONLY_master_key_release12_final_vwb.csv"
@@ -330,6 +326,9 @@ NA_PROP_MAX   <- if (FILTER_MODE == "none") 1 else 0.70
 # Does a zero count toward the NA total?
 #   FALSE = zeros and NAs are separate states (our reading of the NPQ formula)
 ZEROS_COUNT_AS_NA <- FALSE
+
+# "default" = the NA/zero thresholds below; "none" = no NA or zero filtering.
+FILTER_MODE <- "none"
 
 # Target-level detectability (>=50%), matrix-independent, per Alamar.
 # v2 CHANGE: this is now a flag carried into the DA results, not a filter.
