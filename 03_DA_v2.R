@@ -1,6 +1,6 @@
 # =============================================================================
-# Script 03 (v2): Differential Abundance - PD vs Control
-# Description: limma DA for the cohort and panels set in 00_config_v2.R.
+# Script 03 (v2): Differential Abundance (DA) - PD vs Control
+# Description: DA for the cohort and panels set in 00_config_v2.R.
 #              Annotates hits with target QC, vendor flags, and SC drift.
 # =============================================================================
 
@@ -92,7 +92,7 @@ build_cohort <- function(se) {
 
 
 
-# --- 2. Fit limma for a given SE, return the topTable ------------------------
+# --- 2. Fit lm for a given SE, return the topTable ------------------------
 fit_da <- function(se) {
   meta <- as.data.frame(colData(se))
   expr <- assay(se, "npq")
