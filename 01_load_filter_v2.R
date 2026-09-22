@@ -41,10 +41,7 @@ process_panel <- function(npq_file, panel_name) {
   qc_exclude_targets <- c(ha_targets, rare_targets)
 
   # Load NPQ data
- npq_long <- bind_rows(lapply(npq_path, function(f) {
-  read_excel(f, sheet = 1, na = "NA") %>%
-    mutate(across(any_of(c("NPQ", "targetLOD_NPQ")), as.numeric))
-  }))
+  npq_long <- read_excel(npq_path, sheet = 1, skip = NPQ_SKIP, na = "NA")
   cat("Raw rows in the data:", nrow(npq_long), "\n")
 
   # Repair double-encoded target names (abeta)
@@ -60,6 +57,8 @@ process_panel <- function(npq_file, panel_name) {
     npq_long <- dplyr::rename(npq_long, Biofluid = SampleMatrixType)
   if ("targetLOD_NPQ" %in% names(npq_long))
     npq_long <- dplyr::rename(npq_long, LOD = targetLOD_NPQ)
+      if ("ClinicalEvent" %in% names(npq_long))
+    npq_long <- dplyr::rename(npq_long, CLINICAL_EVENT = ClinicalEvent)
 
 
 # --- Donor ID: matching IDs for different cohorts ---------------------
@@ -248,7 +247,7 @@ process_panel <- function(npq_file, panel_name) {
     Biofluid) %>%
     distinct(SampleName, .keep_all = TRUE) %>%
     left_join(sample_det, by = "SampleName") %>%
-    mutate(sample_qc_flag = tolower(SampleQC) != "passed") %>%
+    mutate(sample_qc_flag = !tolower(SampleQC) %in% c("passed", "pass")) %>%
     arrange(SampleName)
 
 

@@ -22,10 +22,10 @@ dir.create(SC_DRIFT_DIR, showWarnings = FALSE, recursive = TRUE)
 # --- 1. Load SC wells --------------------------------------------------------
 
 npq <- bind_rows(lapply(file.path(NPQ_DIR, NPQ_FILE), function(f) {
-  read_excel(f, sheet = 1, na = "NA") %>%
-    mutate(across(any_of(c("NPQ", "targetLOD_NPQ")), as.numeric))
+  read_excel(f, sheet = 1, skip = NPQ_SKIP, na = "NA") %>%
+    mutate(across(any_of(c("NPQ", "targetLOD_NPQ", "LOD")), as.numeric))
 })) %>%
-  dplyr::rename(LOD = targetLOD_NPQ)
+  dplyr::rename(any_of(c(LOD = "targetLOD_NPQ")))
 
 sc <- npq %>%
   dplyr::filter(SampleType == "SC") %>%

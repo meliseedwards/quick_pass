@@ -188,7 +188,7 @@ run_qc_panel <- function(se_path, npq_file, panel_name, da_file) {
 
   # Read the workbook once - both the CV block and the per-plate block use it.
    npq_long <- bind_rows(lapply(file.path(NPQ_DIR, npq_file), function(f) {
-    read_excel(f, sheet = 1, na = "NA") %>%
+    read_excel(f, sheet = 1, skip = NPQ_SKIP, na = "NA") %>%
       mutate(across(any_of(c("NPQ", "targetLOD_NPQ")), as.numeric))
   }))
 

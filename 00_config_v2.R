@@ -16,15 +16,21 @@ PROJECT_DIR  <- file.path(BUCKET_DIR, "results", "nulisa_v2")
 
 # --- Cohort to analyze --------------------------------------------------------
 # change cohort and plate correction, source 00, then run scripts. 
-COHORT <- "p121"  
-PLATE_CORRECTION <- "none" # none, covariate, sva
+COHORT <- "p_ppmi"  
+PLATE_CORRECTION <- "covariate" # none, covariate, sva
+
+# "default" = the NA/zero thresholds below; "none" = no NA or zero filtering.
+FILTER_MODE <- "none"
 
 # label whether model was adj for plate or not 
 PLATE_SUFFIX <- switch(PLATE_CORRECTION, none = "_plate_none", covariate = "_plate_adj", sva = "_plate_sva")
 
+# skip only for ppmi files 
+NPQ_SKIP <- 0
+
 # --- Meta-analysis cohorts ---------------------------------------------------
 META_COHORTS <- c("ELPD", "UMKLM", "KUL", "NTUH", "TRAPCAF", "CANDAS-SMPD")
-META_INPUT   <- "plate_none" # plate_adj = per-cohort decision; plate_none = no plate adj any cohort
+META_INPUT   <- "plate_adj" # plate_adj = some adjusted cohorts; plate_none = no plate adj any cohort
 
 
 if (COHORT == "p121") {         # NTUH 
@@ -38,7 +44,7 @@ if (COHORT == "p121") {         # NTUH
   ID_COLUMN          <- NULL
   GP2_JOIN_KEY       <- "GP2ID"
   STUDY_FILTER       <- c("NTUH")
-  EXCLUDE_FROM_DA <- c("APOE4")   # from TAP report: binary carrier readout
+  EXCLUDE_FROM_DA <- c("APOE4")   # from TAP report: apoe binary carrier readout 
   USE_CURATED        <- FALSE
   SAMPLE_ID_PATTERN  <- "^NTUH_[0-9]+_s[0-9]+$"
   MANIFEST_FILES     <- NULL
@@ -260,6 +266,25 @@ if (COHORT == "p121") {         # NTUH
   MANIFEST_SAMPLE_COL <- c("sample_id", "alternative_id1") 
   MANIFEST_GP2ID_COL  <- "GP2ID"
  
+} else if (COHORT == "p_ppmi") {          # ppmi plasma Neuro220 (Project 312), baseline only
+  PANELS             <- c("Neuro220")
+  MATRIX_TYPE        <- "PLASMA"
+  SAMPLE_DET_MIN     <- 0.90
+  ANCESTRY_KEEP      <- NULL
+  VISIT_KEEP         <- "BL"
+  ID_METHOD          <- "column"
+  ID_COLUMN          <- "PatNo"
+  GP2_JOIN_KEY       <- "clinical_id"     # patno is clinical_id in r12
+  STUDY_FILTER       <- c("PPMI-G", "PPMI-N")
+  EXCLUDE_FROM_DA    <- c("APOE4", "mCherry") # mCherry is IC (control)
+  USE_CURATED        <- FALSE
+  SAMPLE_ID_PATTERN  <- NULL
+  MANIFEST_FILES     <- NULL
+  MANIFEST_SAMPLE_COL <- NULL
+  MANIFEST_GP2ID_COL  <- NULL
+  NPQ_DIR  <- file.path(BUCKET_DIR, "PPMI", "extracted")
+  NPQ_FILE <- "PPMI_Project_312_NULISAseq_Neuro_Panel_1-NPQ_Counts_Plasma_Cohort.xlsx"
+  NPQ_SKIP <- 1                            # header note above the column row
 } else {
   stop("Unknown COHORT: ", COHORT)
 }
@@ -278,6 +303,7 @@ COHORT_DIR <- switch(COHORT,
   p144  = "results_p144_v2",
   p146  = "results_p146_v2",
   p144_p146 = "results_p144_p146_v2",
+  p_ppmi = "results_p_ppmi_v2",
   stop("No COHORT_DIR defined for ", COHORT))
 
 RESULTS_BASE <- file.path(PROJECT_DIR, paste0(COHORT_DIR, "_filter_", FILTER_MODE))
@@ -318,7 +344,6 @@ FDR_THRESHOLD <- 0.05
 OUTLIER_SD_THRESHOLD <- 4
 
 
-
 # --- v2 target filters ------------------------------------------------------
 ZERO_PROP_MAX <- if (FILTER_MODE == "none") 1 else 0.55
 NA_PROP_MAX   <- if (FILTER_MODE == "none") 1 else 0.70
@@ -326,9 +351,6 @@ NA_PROP_MAX   <- if (FILTER_MODE == "none") 1 else 0.70
 # Does a zero count toward the NA total?
 #   FALSE = zeros and NAs are separate states (our reading of the NPQ formula)
 ZEROS_COUNT_AS_NA <- FALSE
-
-# "default" = the NA/zero thresholds below; "none" = no NA or zero filtering.
-FILTER_MODE <- "none"
 
 # Target-level detectability (>=50%), matrix-independent, per Alamar.
 # v2 CHANGE: this is now a flag carried into the DA results, not a filter.
@@ -341,6 +363,9 @@ SAMPLE_DETECT_EXCLUDE <- 20
 
 # Minimum non-missing samples before a target is modelled. PLACEHOLDER.
 MIN_SAMPLES_PER_TARGET <- 20
+
+# Track target-detectability and flag those under 50%
+REPORT_MIN_DETECT <- 0.50
 
 # --- v2 sample handling -----------------------------------------------------
 # v2 CHANGE: SampleQC == "warning" samples are KEPT and flagged

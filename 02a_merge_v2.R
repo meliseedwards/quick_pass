@@ -38,7 +38,9 @@ study_key_clean <- study_key %>%
          age_at_death, age_at_last_follow_up, GP2_phenotype_for_qc,
          family_history_pd, nba_label, nba, wgs_label,
          race_for_qc, region_for_qc) %>%
-  mutate(join_key = .data[[GP2_JOIN_KEY]])
+mutate(join_key = .data[[GP2_JOIN_KEY]]) %>%
+  filter(!is.na(join_key), trimws(join_key) != "")
+cat("Master-key rows with a usable join key:", nrow(study_key_clean), "\n")
 
 # Check for duplicate IDs
 duplicated_ids <- study_key_clean %>%

@@ -376,6 +376,7 @@ dependencies:
   - r-nlme=3.1_169=r45heaba542_0
   - r-nloptr=2.2.1=r45h4d0e4a9_2
   - r-openssl=2.4.2=r45h68c19f5_0
+  - r-patchwork=1.3.2                     
   - r-pillar=1.11.1=r45hc72bb7e_0
   - r-pkgconfig=2.0.3=r45hc72bb7e_5
   - r-prettyunits=1.2.0=r45hc72bb7e_2
